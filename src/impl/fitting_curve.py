@@ -52,8 +52,8 @@ class FindFittingCurve:
             self.target_y[i] = traj_positions[i].y
             self.target_z[i] = traj_positions[i].z
             self.target_timestamp[i] = traj_positions[i].timestamp
-            print('%d %d %7.2f %6.2f %6.2f' % (
-                i, self.target_timestamp[i], self.target_x[i], self.target_y[i], self.target_z[i]))
+            # print('%d %d %7.2f %6.2f %6.2f' % (
+            #     i, self.target_timestamp[i], self.target_x[i], self.target_y[i], self.target_z[i]))
 
     def remove_hitting_net_ball(self, mound_distance):
         remove_check_index = 0
@@ -64,7 +64,7 @@ class FindFittingCurve:
         if remove_check_index > 8:
             for i in reversed(range(self.target_x.shape[0])):
                 if i >= remove_check_index:
-                    print('-r : ', self.target_x[i])
+                    print(f'-- remove {self.target_x[i]}, reason : out of zone')
                     self.delete_data(i)
 
     def remove_negative_ball(self):
@@ -73,7 +73,7 @@ class FindFittingCurve:
             if self.target_x[i] < 140 or self.target_x[i]>1900:
                 negative_index_list.append(i)
         for i in reversed(range(len(negative_index_list))):
-            print('-0 : ', self.target_x[negative_index_list[i]])
+            print(f'-- remove {self.target_x[negative_index_list[i]]}, reason : negative ball')
             self.delete_data(negative_index_list[i])
 
     def remove_abnormal_ball(self):
@@ -82,7 +82,7 @@ class FindFittingCurve:
             if self.target_x[i]>self.target_x[i+1]:
                 unsort_index_list.append(i)
         for i in reversed(range(len(unsort_index_list))):
-            print('-u : ', self.target_x[unsort_index_list[i]])
+            print(f'-- remove {self.target_x[unsort_index_list[i]]}, reason : unsorting ball')
             self.delete_data(unsort_index_list[i])
 
     def early_land_process(self):
@@ -94,7 +94,7 @@ class FindFittingCurve:
         if self.is_land_early:
             for i in reversed(range(self.target_x.shape[0])):
                 if i > self.land_index:
-                    print('-e : ', self.target_x[i])
+                    print(f'-- remove {self.target_x[i]}, reason : land early')
                     self.delete_data(i)
 
     def find_Z_coef(self, X: (float, float), a: float, b: float, c: float, d: float, e: float) -> float:
@@ -120,18 +120,24 @@ class FindFittingCurve:
     def get_time_by_X(self, x: float) -> float:
         return (x - self.x_coef[1]) / self.x_coef[0]
 
+    def print_raw_data(self):
+        print(f'------- CURVE DATA -------')
+        for i in range(self.target_x.shape[0]):
+            print(f'{i:02d} {self.target_timestamp[i]}  {self.target_x[i]:7.2f}  {self.target_y[i]:7.2f}  {self.target_z[i]:7.2f}')
+
+
     def draw_env(self, materials: TrajCalculateMaterials):
         # net point 
-        net_x = [1950, 1950, 1950, 1950, 1950]
-        net_y = [-100, 100, 100, -100, -100]
-        net_z = [0, 0, 170, 170, 0]
-        self.ax3d.plot(net_x, net_y, net_z, color='black', linewidth=2)
+        # net_x = [1950, 1950, 1950, 1950, 1950]
+        # net_y = [-100, 100, 100, -100, -100]
+        # net_z = [0, 0, 170, 170, 0]
+        # self.ax3d.plot(net_x, net_y, net_z, color='black', linewidth=2)
 
         # nine-square
-        nine_x = [1950, 1950, 1950, 1950, 1950]
-        nine_y = [-25, 25, 25, -25, -25]
-        nine_z = [90, 90, 150, 150, 90]
-        self.ax3d.plot(nine_x, nine_y, nine_z, color='black', linewidth=1)
+        # nine_x = [1950, 1950, 1950, 1950, 1950]
+        # nine_y = [-25, 25, 25, -25, -25]
+        # nine_z = [90, 90, 150, 150, 90]
+        # self.ax3d.plot(nine_x, nine_y, nine_z, color='black', linewidth=1)
 
         # pitch point 
         pitch_x = [0, 0, -15, -15, 0]
@@ -171,12 +177,14 @@ class FindFittingCurve:
         self.ax3d.invert_yaxis()
         self.draw_env(materials)
         self.ax3d.view_init(10, 130)
+        # self.ax3d.text(1900, 100, -800, 'Pitching Trajectory', fontsize=20)
         # self.ax3d.scatter3D(data_x_show, data_y_show, data_z_show, color='violet')
 
     def draw_curve_on_plot(self, target_x: float, release_x: float, materials: TrajCalculateMaterials,
                            release_time: float):
         # generate 300 points between pitcher and zone
         release_x = max(release_x, 120)
+        print(f'------- RELEASE X -------')
         print('release x : ', release_x)
         curve_start_x = release_x
         curve_end_x = materials.mound_distance_cm
@@ -197,8 +205,8 @@ class FindFittingCurve:
 
         curve_length = int(curve_end_x - curve_start_x)
 
-        print('curve min time : ', self.curve_min_timestamp)
-        print('curve max time : ', self.curve_max_timestamp)
+        # print('curve min time : ', self.curve_min_timestamp)
+        # print('curve max time : ', self.curve_max_timestamp)
 
         gen_interval = curve_length / 300
         gen_x, gen_y, gen_z = [], [], []
@@ -216,7 +224,7 @@ class FindFittingCurve:
         gen_y = np.array(gen_y)
         gen_z = np.array(gen_z)
 
-        cmap = plt.get_cmap('spring')
+        cmap = plt.get_cmap('autumn')
         c = np.linspace(0, 1, gen_x.shape[0])
         self.ax3d.scatter3D(gen_x, gen_y, gen_z, c=c, cmap=cmap)
 
@@ -277,12 +285,15 @@ class FindFittingCurve:
 
         self.exist_front_ball = exist_front_ball
         self.exist_back_ball = exist_back_ball
-        print(self.exist_front_ball, self.exist_back_ball)
+        print(f'------- EXIST BALL -------')
+        print(f'exist balls in pitch : {self.exist_front_ball}')
+        print(f'exist balls in zone : {self.exist_back_ball}')
 
-        copy_x = self.target_x.copy()
-        copy_y = self.target_y.copy()
-        copy_z = self.target_z.copy()
+        original_x = self.target_x.copy()
+        original_y = self.target_y.copy()
+        original_z = self.target_z.copy()
 
+        print(f'------- REMOVE BALL -------')
         self.remove_negative_ball()
         self.remove_hitting_net_ball(materials.mound_distance_cm)
         self.remove_abnormal_ball()
@@ -290,6 +301,8 @@ class FindFittingCurve:
         
         if self.target_x.shape[0]<5:
             return None
+        
+        self.print_raw_data()
 
         # xy -> z
         self.fit_curve_coef, pcov = curve_fit(self.find_Z_coef, (self.target_x, self.target_y), self.target_z)
@@ -314,7 +327,9 @@ class FindFittingCurve:
         self.cal_shortest_distance_from_strike_center(materials)
         self.plot_setting(materials)
         self.draw_curve_on_plot(self.target_x, self.release_traj_position.x, materials, release_time)
-        # self.ax3d.scatter3D(copy_x, copy_y, copy_z, color='black', marker='o')
+        self.ax3d.scatter3D(original_x, original_y, original_z, color='black', marker='o')
+
+        # plt.show()
 
         result = TrajCalculateResult(
             is_strike=self.is_strike,

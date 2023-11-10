@@ -172,6 +172,7 @@ class TrajCalculationProcess:
 
         if self.options.camera_view_num == 4:
             # -------------- frame extractor --------------
+            print(f'------- FRAME EXTRACTING -------')
             self.pitcher_min_video_length = min(len(self.traj_left_pitcher_video.timestamps), len(self.traj_right_pitcher_video.timestamps))
             for idx in range(self.pitcher_min_video_length):
                 img = self.traj_left_pitcher_video.frames[idx]
@@ -187,7 +188,7 @@ class TrajCalculationProcess:
                     self.frame_queue_list[0].put(img)
                     self.frame_queue_list[1].put(img2)
 
-            print('q1/q2 size : ', self.frame_queue_list[0].qsize(), self.frame_queue_list[1].qsize())
+            print(f'PITCH : {self.frame_queue_list[0].qsize()} and {self.frame_queue_list[1].qsize()}')
 
             self.zone_min_video_length = min(len(self.traj_left_zone_video.timestamps), len(self.traj_right_zone_video.timestamps))
             for idx in range(self.zone_min_video_length):
@@ -204,19 +205,21 @@ class TrajCalculationProcess:
                     self.frame_queue_list[2].put(img3)
                     self.frame_queue_list[3].put(img4)
 
-            print('q3/q4 size : ', self.frame_queue_list[2].qsize(), self.frame_queue_list[3].qsize())
+            print(f'ZONE : {self.frame_queue_list[2].qsize()} and {self.frame_queue_list[3].qsize()}')
 
             # -------------- detecting --------------
-
+            print(f'------- YOLO INFERENCE -------')
             st_time = time.time()
             self.yolo_inference(self.frame_queue_list[0], self.target_view[0], self.options.detector_pitcher)
             self.yolo_inference(self.frame_queue_list[1], self.target_view[1], self.options.detector_pitcher)
-            print('pitcher inference time : ', int(time.time() - st_time), ' s')
+            elapsed_time = int(time.time() - st_time)
+            print(f'pitcher inference time : {elapsed_time:.2f} s')
 
             st_time = time.time()
             self.yolo_inference(self.frame_queue_list[2], self.target_view[2], self.options.detector_zone)
             self.yolo_inference(self.frame_queue_list[3], self.target_view[3], self.options.detector_zone)
-            print('zone inference time : ', int(time.time() - st_time), ' s')
+            elapsed_time = int(time.time() - st_time)
+            print(f'pitcher inference time : {elapsed_time:.2f} s')
 
             # -------------- reconstruct 3D trajectory and return the raw data --------------
 
@@ -245,20 +248,22 @@ class TrajCalculationProcess:
                 'zone',
                 False,
             )
+            
+            print(f'------- 3D TARGETS -------')
 
             origin_target_count = 0
             if target is not None:
                 origin_target_count = target[0].shape[0]
                 self.target1 = np.resize(self.target1, (origin_target_count, 4))
                 self.target1 = target
-            print('original target count : ', origin_target_count)
+            print(f'Reconstruct {origin_target_count} targets in PITCH')
 
             origin_target2_count = 0
             if target2 is not None:
                 origin_target2_count = target2[0].shape[0]
                 self.target2 = np.resize(self.target2, (origin_target2_count, 4))
                 self.target2 = target2
-            print('original target2 count : ', origin_target2_count)
+            print(f'Reconstruct {origin_target2_count} targets in ZONE')
 
             # --------------------- postprocessing --------------------------
 
@@ -280,21 +285,22 @@ class TrajCalculationProcess:
                 data_frame_idx += self.release_frame_index
 
                 # delete first error ball
-                data_min_x = np.min(data_x)
-                print('data min x ', data_min_x)
-                data_min_index = 0
-                for i in range(data_x.shape[0]):
-                    if data_x[i] == data_min_x:
-                        break
-                    else:
-                        data_min_index += 1
-                print('data min index : ', data_min_index)
-                for i in reversed(range(data_x.shape[0])):
-                    if i < data_min_index:
-                        data_x = np.delete(data_x, i)
-                        data_y = np.delete(data_y, i)
-                        data_z = np.delete(data_z, i)
-                        data_frame_idx = np.delete(data_frame_idx, i)
+                # data_min_x = np.min(data_x)
+                # print('data min x ', data_min_x)
+                # data_min_index = 0
+                # for i in range(data_x.shape[0]):
+                #     if data_x[i] == data_min_x:
+                #         break
+                #     else:
+                #         data_min_index += 1
+                # print('data min index : ', data_min_index)
+                # for i in reversed(range(data_x.shape[0])):
+                #     if i < data_min_index:
+                #         print('delete ', i)
+                #         data_x = np.delete(data_x, i)
+                #         data_y = np.delete(data_y, i)
+                #         data_z = np.delete(data_z, i)
+                #         data_frame_idx = np.delete(data_frame_idx, i)
 
                 for i in range(data_x.shape[0]):
                     tp1 = TrajPosition(x=data_x[i], y=data_y[i], z=data_z[i],
@@ -313,28 +319,28 @@ class TrajCalculationProcess:
                 data2_frame_idx += self.release_frame_index + self.options.interval_of_pitch_zone
 
                 # delete first error ball
-                data2_min_x = np.min(data2_x)
-                print('data2 min x ', data2_min_x)
-                data2_min_index = 0
-                for i in range(data2_x.shape[0]):
-                    if data2_x[i] == data2_min_x:
-                        break
-                    else:
-                        data2_min_index += 1
-                print('data2 min index : ', data2_min_index)
-                for i in reversed(range(data2_x.shape[0])):
-                    if i < data2_min_index:
-                        data2_x = np.delete(data2_x, i)
-                        data2_y = np.delete(data2_y, i)
-                        data2_z = np.delete(data2_z, i)
-                        data2_frame_idx = np.delete(data2_frame_idx, i)
+                # data2_min_x = np.min(data2_x)
+                # print('data2 min x ', data2_min_x)
+                # data2_min_index = 0
+                # for i in range(data2_x.shape[0]):
+                #     if data2_x[i] == data2_min_x:
+                #         break
+                #     else:
+                #         data2_min_index += 1
+                # print('data2 min index : ', data2_min_index)
+                # for i in reversed(range(data2_x.shape[0])):
+                #     if i < data2_min_index:
+                #         data2_x = np.delete(data2_x, i)
+                #         data2_y = np.delete(data2_y, i)
+                #         data2_z = np.delete(data2_z, i)
+                #         data2_frame_idx = np.delete(data2_frame_idx, i)
 
                 for i in range(data2_x.shape[0]):
                     tp1 = TrajPosition(x=data2_x[i], y=data2_y[i], z=data2_z[i],
                                        timestamp=self.traj_left_zone_video.timestamps[int(data2_frame_idx[i])])
                     self.traj_positions2.append(tp1)
 
-            print('-------------- traj_pos  --------------')
+            # print('-------------- traj_pos  --------------')
             if len(self.traj_positions1) <= 2 :
                 self.exist_front_ball = False
                 self.traj_positions = self.traj_positions2
@@ -351,39 +357,31 @@ class TrajCalculationProcess:
 
 
         elif self.options.camera_view_num == 2:
-
-            # -------------- Load Videos ---------------
-
-            cap1 = cv2.VideoCapture(self.traj_left_zone_video_path)
-            cap2 = cv2.VideoCapture(self.traj_right_zone_video_path)
-            self.caps = [cap1, cap2]
-
-            for i in range(self.options.camera_view_num):
-                self.video_length.append(int(self.caps[i].get(cv2.CAP_PROP_FRAME_COUNT)))
-
-            # -------------- frame extractor --------------
-
-            for idx in range(self.video_length[0]):
-                ret, img = cap1.read()
-                ret2, img2 = cap2.read()
-                if not ret:
+            print(f'------- FRAME EXTRACTING -------')
+            self.pitcher_min_video_length = min(len(self.traj_left_pitcher_video.timestamps), len(self.traj_right_pitcher_video.timestamps))
+            for idx in range(self.pitcher_min_video_length):
+                img = self.traj_left_pitcher_video.frames[idx]
+                try:
+                    img2 = self.traj_right_pitcher_video.frames[idx]
+                except:
                     break
-                if idx < self.release_frame_index or idx >= (self.release_frame_index + 400):
+                if img is None or img2 is None:
+                    break
+                if idx < max(self.release_frame_index, 0) or idx >= min(self.release_frame_index+400, self.pitcher_min_video_length):
                     continue
-                elif idx % self.options.skip_interval_zone == 0:
+                elif idx % self.options.skip_interval_pitcher == 0:
                     self.frame_queue_list[0].put(img)
                     self.frame_queue_list[1].put(img2)
-            self.caps[0].release()
-            self.caps[1].release()
-            print('q1/q2 size : ', self.frame_queue_list[0].qsize(), self.frame_queue_list[1].qsize())
+
+            print(f'PITCH : {self.frame_queue_list[0].qsize()} and {self.frame_queue_list[1].qsize()}')
 
             # -------------- detecting --------------
-
+            print(f'------- YOLO INFERENCE -------')
             st_time = time.time()
-            self.yolo_inference(self.frame_queue_list[0], self.target_view[0], self.options.detector_zone)
-            self.yolo_inference(self.frame_queue_list[1], self.target_view[1], self.options.detector_zone)
-            end_time = time.time()
-            print('inference time : ', int(end_time - st_time), ' s')
+            self.yolo_inference(self.frame_queue_list[0], self.target_view[0], self.options.detector_pitcher)
+            self.yolo_inference(self.frame_queue_list[1], self.target_view[1], self.options.detector_pitcher)
+            elapsed_time = int(time.time() - st_time)
+            print(f'pitcher inference time : {elapsed_time:.2f} s')
 
             # -------------- reconstruct 3D trajectory and return the raw data --------------
 
@@ -396,9 +394,13 @@ class TrajCalculationProcess:
                 self.options.mask_view[1],
                 self.options.calibration[0],
                 self.options.calibration[1],
-                'zone',
+                'pitcher',
                 False,
             )
+
+            print(f'------- 3D TARGETS -------')
+            print(f'Reconstruct {target[0].shape[0]} targets in PITCH')
+
 
             # --------------------- postprocessing --------------------------
 
@@ -413,35 +415,10 @@ class TrajCalculationProcess:
                     data_frame_idx[i] = target[3][i] * self.options.skip_interval_pitcher
                 data_frame_idx += self.release_frame_index
 
-                # delete first error ball
-                data_min_x = np.min(data_x)
-                print('data min x ', data_min_x)
-                data_min_index = 0
-                for i in range(data_x.shape[0]):
-                    if data_x[i] == data_min_x:
-                        break
-                    else:
-                        data_min_index += 1
-                print('data min index : ', data_min_index)
-                for i in reversed(range(data_x.shape[0])):
-                    if i < data_min_index:
-                        data_x = np.delete(data_x, i)
-                        data_y = np.delete(data_y, i)
-                        data_z = np.delete(data_z, i)
-                        data_frame_idx = np.delete(data_frame_idx, i)
-
-                # remove the ball which height > 350 or < 0
-                for i in reversed(range(data_z.shape[0])):
-                    if data_z[i] < 0:
-                        data_x = np.delete(data_x, i)
-                        data_y = np.delete(data_y, i)
-                        data_z = np.delete(data_z, i)
-                        data_frame_idx = np.delete(data_frame_idx, i)
-
                 # print('-------------- traj_pos 1 --------------')
                 for i in range(data_x.shape[0]):
                     tp1 = TrajPosition(x=data_x[i], y=data_y[i], z=data_z[i],
-                                       timestamp=self.traj_left_pitcher_video_timestamp[int(data_frame_idx[i])])
+                                       timestamp=self.traj_left_pitcher_video.timestamps[int(data_frame_idx[i])])
                     self.traj_positions1.append(tp1)
 
             else:
@@ -456,5 +433,7 @@ class TrajCalculationProcess:
         traj_result = self.find_fitting_curve.get_fitting_curve_data(self.traj_positions, self.release_time, materials,
                                                                      self.exist_front_ball, self.exist_back_ball)
 
-        print('total time : {:.2f} s'.format(time.time() - total_start_time))
+        print(f'------- TIME COST -------')
+        print(f'time cost : {(time.time() - total_start_time):.2f} s')
+        print(f'-------------------------')
         return traj_result
